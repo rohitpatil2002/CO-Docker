@@ -1,0 +1,306 @@
+P1 – Install docker on ec2 machine and perform lifecycle operations on any three images including nginx.
+1.	Create EC2 & Install docker.
+2.	Pull & run nginx image in docker
+$ docker run –name webserver -p 80:80 -d nginx
+Then open public IP on new tab. Its show nginx welcome page.
+3.	Pull & run hello-world & centos images
+$ docker run hello-world
+$ docker run centos
+
+$ docker images
+$ docker ps -a
+$ docker pause [container_id of centos]
+$ docker unpause [container_id of centos]
+$ docker stop 
+$ docker start
+$ docker kill
+$ docker rm
+-------------------------------
+P2 – Create your own image, configure your own space in docker hub and push your image into dockerhub workspace. Delete previously available images from your local machine. And pull your own image from docker hub.
+1.	Create EC2 & Install docker.
+2.	Create docker image 
+$ nano dockerfile
+   # this is sample image
+   FROM ubuntu
+   MAINTAINER mydypiu@gmail.com
+   RUN apt update -y
+   RUN apt install nginx -y
+   CMD [“echo”,”Image Created”]
+3.	Build docker image
+$ docker build -t rmp:001 .
+$ docker tag rmp:001 rmpatil1128/repo30:456
+$ docker images
+$ docker login
+
+$ docker push rmpatil1128/repo30:456
+$ docker rmi -f [image_id]
+$ docker pull rmpatil1128/repo30:456
+$ docker images
+-----------------------------------------------
+P3 – Pull Jenkins image from dockerhub,expose dataport and control port and align port on docker engine.
+1.	Create EC2 & Install docker.
+2.	Pull Jenkins image & inspect it –
+$docker pull jenkins/jenkins
+$ docker images
+$ docker inspect [image_id]. 
+3.	Run Jenkins and map the ports
+$ docker run -p 8080:8080 -p 50000:50000 jenkins/jenkins
+4.	Open public ip on new tab with  :8080  
+•	Open it & paste password copied from EC2 CLI
+•	Then select Install suggested plugins
+•	Then skip & continue as admin (don’t fill details)
+•	Click on save & finish.
+•	Then Click start using Jenkins.
+5.	Open public ip on new tab with  :50000
+
+P4 – Create private registry on the localhost and push any image in that private registry.
+Create EC2 & Install docker.
+Follow given commands ---
+  $ docker run -d -p 5000:5000 --name registry registry
+  $ docker pull centos
+  $ docker images
+  $ docker tag [centos_image-id] localhost:5000/centos
+  $ docker push localhost:5000/centos
+  $ docker rmi -f [centos_image-id]
+  $ docker images   ---------  (you can see centos image is deleted)
+  $ docker pull localhost:5000/centos
+
+P5 – Implementing AWS ECS (Elastic Container Service) and Fargate deploying and managing containerized applications.
+ECS--- In Container setting – Name(httpd), Image URI(httpd:2.4), Port name(httpd-80-tcp)
+
+P6 – Install Docker Compose package on docker then create and run multi-container applications using Docker Compose.
+1.	Create SG with HTTP,HTTPD,SSH, custom tcp with port-8000
+2.	Create EC2 (with Ubuntu OS) & Install Docker on it.
+3.	Install Compose standalone plugin.
+$ sudo curl -SL https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+
+$ sudo chmod u+x /usr/local/bin/docker-compose. 
+$ ls -l /usr/local/bin/
+
+$ mkdir composetest
+$ cd composetest
+$ Using nano create app.py / dockerfile / requirements.txt / compose.yaml files.
+
+$ sudo docker compose up
+-----------------------------------------
+$ nano app.py
+
+import time
+
+import redis
+from flask import Flask
+
+app = Flask(__name__)
+cache = redis.Redis(host='redis', port=6379)
+
+def get_hit_count():
+    retries = 5
+    while True:
+        try:
+            return cache.incr('hits')
+        except redis.exceptions.ConnectionError as exc:
+            if retries == 0:
+                raise exc
+            retries -= 1
+            time.sleep(0.5)
+
+@app.route('/')
+def hello():
+    count = get_hit_count()
+    return 'Hello World! I have been seen {} times.\n'.format(count)
+---------------------------------------
+$ nano dockerfile
+
+# syntax=docker/dockerfile:1
+FROM python:3.10-alpine
+WORKDIR /code
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+RUN apk add --no-cache gcc musl-dev linux-headers
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+EXPOSE 5000
+COPY . .
+CMD ["flask", "run"]
+----------------------------------------
+$ nano requirements.txt
+
+flask
+redis
+----------------------------------------
+$ nano compose.yaml
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  redis:
+    image: "redis:alpine"
+
+P7 – Build Image With Two Dependencies (Flask,Reddis) And Create 1 Manager And 3 Worker Node Container With Docker Swarm.
+1.	Create 3 EC2. 1 as manager and 2 as worker. & install docker on each EC2
+2.	Initialize docker swarm on manager node.
+$ docker swarm init
+3.	Connect worker nodes to manager node using join token.
+4.	Check all nodes are connected to manager node or not
+$ docker node ls
+5.	Create service and assign task to worker node
+$ docker service create --replicas 5 alpine www.google.com
+6.	Check docker service is created or not
+$ docker service ls
+7.	Check docker service tasks
+$ docker service ps [service_id]
+8.	Promote any worker node as Manager and demote to worker
+$ docker node promote [node_id]
+$ docker node demote [node_id]
+9.	Leave swarm from worker
+$ docker swarm leave    (Use this command on worker node)
+10.	Remove node from cluster
+$ docker node rm [node_id]
+
+P8 – Build Image with two dependencies (Flask,Reddis) and create container with 5 replicas with docker stack.
+1.	Create 3 EC2. 1 as manager and 2 as worker. & install docker on each EC2
+2.	Initialize docker swarm on manager node.
+$ docker swarm init
+3.	Connect worker nodes to manager node using join token.
+4.	Check all nodes are connected to manager node or not
+$ docker node ls
+5.	Create demoproject directory & open it.
+6.	Using nano Create app.py / dockerfile / requirements.txt / docker-compose.yml files.
+7.	Then use following commands –
+$ docker build -t web_app .
+$ docker tag web_app:latest rmpatil1128/app:11
+$ docker push rmpatil1128/app:11
+8.	Login in dockerhub
+9.	Deploy app on docker stack.
+$ docker stack deploy -c docker-compose.yml web_app
+10.	Then open public IP on new tab with :4000. (Ex. IP:4000)
+
+-----------------------------------------
+$ nano app.py
+
+from flask import Flask
+from redis import Redis, RedisError
+import os
+import socket
+
+# Connect to Redis
+redis = Redis(host="redis", db=0, socket_connect_timeout=2, socket_timeout=2)
+
+app = Flask(__name__)
+
+@app.route("/")
+def hello():
+    try:
+        visits = redis.incr("counter")
+    except RedisError:
+        visits = "<i>cannot connect to Redis, counter disabled</i>"
+
+    html = "<h3>Hello {name}!</h3>" \
+           "<b>Hostname:</b> {hostname}<br/>" \
+           "<b>Visits:</b> {visits}"
+    return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname(), visits=visits)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=80)
+
+---------------------------------------
+$ nano dockerfile
+
+# Use an official Python runtime as a parent image
+FROM python:3.12-slim
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+# Make port 80 available to the world outside this container
+EXPOSE 80
+
+# Define environment variable
+ENV NAME World
+
+# Run app.py when the container launches
+CMD ["python", "app.py"]
+
+----------------------------------------
+$ nano requirements.txt
+
+flask
+redis
+----------------------------------------
+$ nano compose.yaml
+
+version: "3"
+services:
+  # Service Name Defined as web
+  web:
+    # Pull the Image from Repository.
+    # replace username/repo:tag with your name and image details
+    #image: username/repo:tag 
+    image: rmpatil1128/stack:001
+    # Command used to deploy the Service
+    deploy:
+      # Run 5 instances of that image as a service called web
+      replicas: 5
+      resources:
+        # Limiting each one to use, at most, 10% of a single core of CPU time and 50MB of RAM.
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      # Immediately restart containers if one fails.     
+      restart_policy:
+        condition: on-failure
+    # Map port 4000 on the host to web’s port 80.    
+    ports:
+      - "4000:80"
+    # Define default network  
+    networks:
+      - webnet
+networks:
+  webnet:
+
+--------------------------------------
+P9 – Implementing Docker Health Checks for PostgreSQL Database in a Containerized Environment.
+1.	Create 1 EC2 & Install docker.
+2.	Run Postgres container
+$ docker container --name postgres1 -e POSTGRES_PASSWORD=pass -d postgres
+$ docker ps
+3.	Check DB is accepting connection or not
+$ docker container exec -t postgres1 bash
+$ pg_isready -U postgres
+$ exit
+4.	Check DB is healthy or not for postgres user
+$ docker container run -d --name postgres2 -e POSTGRES_PASSWORD=pass --health-cmd=“pg_isready -U postgres || exit 1” postgres
+5.	Check DB is healthy or not for root user
+$ docker container run -d --name postgres3 -e POSTGRES_PASSWORD=pass --health-cmd=“pg_isready -U root || exit 1” postgres
+$ docker ps
+
+
+Docker installation ---
+sudo -i
+
+sudo apt-get update
+sudo apt-get install \
+apt-transport-https \
+ca-certificates \
+curl \
+gnupg-agent \
+software-properties-common
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add –
+
+sudo add-apt-repository \
+"deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+$(lsb_release -cs) \
+stable"
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+systemctl status docker
